@@ -103,11 +103,14 @@
   .badge-b{background:#e0f2fe;color:#0369a1;}
   .loading{text-align:center;padding:2.5rem;color:var(--tm);font-size:0.88rem;font-weight:500;}
   /* Multi-select empleados */
-  .empleados-check{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.5rem;max-height:180px;overflow-y:auto;border:1.5px solid #dde8e0;border-radius:var(--radio);padding:0.65rem;background:white;}
-  .emp-check-item{display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0.5rem;border-radius:8px;cursor:pointer;transition:background 0.15s;}
-  .emp-check-item:hover{background:var(--gp);}
-  .emp-check-item input[type=checkbox]{width:15px;height:15px;accent-color:var(--g);cursor:pointer;}
-  .emp-check-item label{font-size:0.88rem;color:var(--td);cursor:pointer;font-weight:500;}
+  .empleados-check{display:flex;flex-wrap:wrap;gap:0.5rem;padding:0.65rem;border:1.5px solid #dde8e0;border-radius:var(--radio);background:white;min-height:52px;}
+  .emp-check-item{position:relative;}
+  .emp-check-item input[type=checkbox]{position:absolute;opacity:0;width:0;height:0;}
+  .emp-check-label{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 0.9rem;border-radius:50px;border:1.5px solid #dde8e0;background:white;font-size:0.86rem;color:var(--tm);cursor:pointer;font-weight:500;transition:all 0.15s;user-select:none;}
+  .emp-check-label::before{content:'';width:16px;height:16px;border-radius:50%;border:2px solid #dde8e0;flex-shrink:0;transition:all 0.15s;background:white;}
+  .emp-check-item input:checked + .emp-check-label{background:var(--gp);border-color:var(--g);color:var(--gm);font-weight:700;}
+  .emp-check-item input:checked + .emp-check-label::before{background:var(--g);border-color:var(--g);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 10'%3E%3Cpath d='M1 5l3.5 3.5L11 1' stroke='white' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:center;background-size:10px;}
+  .emp-check-item:hover .emp-check-label{border-color:var(--gl);background:var(--gp);}
   /* Modal */
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;}
   .modal-box{background:#fff;border-radius:20px;padding:2rem;width:100%;max-width:520px;box-shadow:0 24px 64px rgba(0,0,0,0.3);margin:auto;}
@@ -326,6 +329,7 @@
       <div class="tabs">
         <button class="tab active" id="gtab-empleados" onclick="switchGTab('empleados')">Empleados</button>
         <button class="tab" id="gtab-actividades" onclick="switchGTab('actividades')">Actividades</button>
+        <button class="tab" id="gtab-tipos-horas" onclick="switchGTab('tipos-horas')">Tipos de horas</button>
         <button class="tab" id="gtab-horas" onclick="switchGTab('horas')">Lista de horas</button>
       </div>
 
@@ -346,6 +350,24 @@
           </div>
         </div>
         <div class="chart-card" style="padding:0;"><div id="lista-actividades" style="padding:0.5rem 0;"><div class="loading">Cargando…</div></div></div>
+      </div>
+
+      <!-- TIPOS HORAS -->
+      <div id="gsec-tipos-horas" style="display:none;">
+        <div class="form-card" style="margin-bottom:1.25rem;">
+          <div style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:100px;margin:0;">
+              <label>Horas (valor)</label>
+              <input type="number" id="g-th-valor" placeholder="Ej: 1.5" min="0.5" step="0.5" />
+            </div>
+            <div class="form-group" style="flex:2;min-width:140px;margin:0;">
+              <label>Etiqueta</label>
+              <input type="text" id="g-th-etiqueta" placeholder="Ej: 1.5 h, Media jornada..." />
+            </div>
+            <button class="btn-primary" style="width:auto;padding:0.75rem 1.25rem;white-space:nowrap;" onclick="addTipoHora()">+ Añadir</button>
+          </div>
+        </div>
+        <div class="chart-card" style="padding:0;"><div id="lista-tipos-horas" style="padding:0.5rem 0;"><div class="loading">Cargando…</div></div></div>
       </div>
 
       <!-- LISTA HORAS -->
@@ -448,7 +470,7 @@ const SB_URL='https://gkhujhooviccodadnngx.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdraHVqaG9vdmljY29kYWRubmd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMjQ1MTgsImV4cCI6MjA4OTYwMDUxOH0.n5o_sVkO24zW9NLHaYLk_i8tsOJZMiYDg1qEU9LhnfU';
 
 let sb=null,currentRol=null,currentFincaId=null,granularidad='mes';
-let dbEmpleados=[],dbCultivos=[],dbUbicaciones=[],dbActividades=[];
+let dbEmpleados=[],dbCultivos=[],dbUbicaciones=[],dbActividades=[],dbTiposHoras=[];
 let chartPeriodo=null,chartCultivo=null;
 
 function initSB(){if(!sb)sb=window.supabase.createClient(SB_URL,SB_KEY);return sb;}
@@ -497,13 +519,14 @@ window.addEventListener('popstate',e=>{showPage(e.state?e.state.page:'menu',fals
 // ─── MAESTROS ───
 async function cargarMaestros(){
   if(!sb||!currentFincaId)return;
-  const[re,rc,ru,ra]=await Promise.all([
+  const[re,rc,ru,ra,rth]=await Promise.all([
     sb.from('empleados').select('*').eq('finca_id',currentFincaId).eq('activo',true).order('apellidos'),
     sb.from('cultivos').select('*').eq('finca_id',currentFincaId).eq('activo',true).order('orden'),
     sb.from('ubicaciones').select('*').eq('finca_id',currentFincaId).eq('activo',true).order('codigo'),
-    sb.from('actividades').select('*').eq('finca_id',currentFincaId).eq('activo',true).order('nombre')
+    sb.from('actividades').select('*').eq('finca_id',currentFincaId).eq('activo',true).order('nombre'),
+    sb.from('tipos_horas').select('*').eq('finca_id',currentFincaId).eq('activo',true).order('orden')
   ]);
-  dbEmpleados=re.data||[];dbCultivos=rc.data||[];dbUbicaciones=ru.data||[];dbActividades=ra.data||[];
+  dbEmpleados=re.data||[];dbCultivos=rc.data||[];dbUbicaciones=ru.data||[];dbActividades=ra.data||[];dbTiposHoras=rth.data||[];
   poblarSelects();
 }
 
@@ -515,6 +538,16 @@ function poblarSelects(){
   su.innerHTML='<option value="">Seleccionar ubicación</option>'+dbUbicaciones.map(u=>`<option value="${u.codigo}">${u.codigo}${u.descripcion?' — '+u.descripcion:''}</option>`).join('');
   const sa=document.getElementById('r-actividad');
   sa.innerHTML='<option value="">Seleccionar actividad</option>'+dbActividades.map(a=>`<option value="${a.id}">${a.nombre}</option>`).join('');
+  // Horas desde tipos_horas
+  const sh=document.getElementById('r-horas');
+  if(dbTiposHoras.length){
+    sh.innerHTML='<option value="">Seleccionar horas</option>'+dbTiposHoras.map(t=>`<option value="${t.valor}">${t.etiqueta}</option>`).join('');
+  }
+  // Edit modal horas
+  const she=document.getElementById('h-edit-horas');
+  if(she&&dbTiposHoras.length){
+    she.innerHTML=dbTiposHoras.map(t=>`<option value="${t.valor}">${t.etiqueta}</option>`).join('');
+  }
   // Dashboard filtros
   const fe=document.getElementById('f-empleado');
   fe.innerHTML='<option value="">Todos</option>'+dbEmpleados.map(e=>`<option value="${e.id}">${e.nombre} ${e.apellidos}</option>`).join('');
@@ -527,11 +560,13 @@ function poblarSelects(){
 
 function renderEmpleadosCheck(){
   const cont=document.getElementById('empleados-check-list');
-  if(!dbEmpleados.length){cont.innerHTML='<div style="padding:0.75rem;color:var(--tm);font-size:0.88rem;">Sin empleados. Añade empleados en Gestión primero.</div>';return;}
+  if(!dbEmpleados.length){cont.innerHTML='<div style="padding:0.5rem;color:var(--tm);font-size:0.88rem;">Sin empleados. Añade empleados en Gestión primero.</div>';return;}
+  // Preserve checked state
+  const checked=new Set([...cont.querySelectorAll('input:checked')].map(i=>i.value));
   cont.innerHTML=dbEmpleados.map(e=>`
     <div class="emp-check-item">
-      <input type="checkbox" id="emp-${e.id}" value="${e.id}" />
-      <label for="emp-${e.id}">${e.nombre} ${e.apellidos}</label>
+      <input type="checkbox" id="emp-${e.id}" value="${e.id}" ${checked.has(e.id)?'checked':''} />
+      <label class="emp-check-label" for="emp-${e.id}">${e.nombre} ${e.apellidos}</label>
     </div>`).join('');
 }
 
@@ -702,12 +737,13 @@ function renderTablaCultivos(data){
 
 // ─── GESTIÓN TABS ───
 function switchGTab(tab){
-  ['empleados','actividades','horas'].forEach(t=>{
+  ['empleados','actividades','tipos-horas','horas'].forEach(t=>{
     document.getElementById('gtab-'+t).classList.toggle('active',t===tab);
     document.getElementById('gsec-'+t).style.display=t===tab?'block':'none';
   });
   if(tab==='empleados')renderListaEmpleados();
   else if(tab==='actividades')renderListaActividades();
+  else if(tab==='tipos-horas')renderListaTiposHoras();
   else if(tab==='horas')iniciarListaHoras();
 }
 
@@ -875,6 +911,46 @@ async function guardarEdicionHora(){
 }
 async function eliminarHora(id){if(!confirm('¿Eliminar este registro?'))return;await sb.from('horas').delete().eq('id',id);buscarHoras();}
 
+// ─── TIPOS HORAS ───
+async function renderListaTiposHoras(){
+  const{data}=await sb.from('tipos_horas').select('*').eq('finca_id',currentFincaId).order('orden');
+  const list=document.getElementById('lista-tipos-horas');
+  if(!data||!data.length){list.innerHTML='<div style="padding:1.5rem;text-align:center;color:var(--tm);font-size:0.9rem;">Sin tipos de horas. Añade el primero.</div>';return;}
+  list.innerHTML=data.map((t,i)=>`
+    <div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1.25rem;border-bottom:1px solid #f0f8f2;">
+      <div style="flex:1;">
+        <span style="font-size:0.95rem;font-weight:700;color:var(--td);${t.activo?'':'opacity:0.45;text-decoration:line-through;'}">${t.etiqueta}</span>
+        <span style="font-size:0.78rem;color:var(--tm);margin-left:0.5rem;">(${t.valor} h)</span>
+      </div>
+      <button onclick="toggleTipoHora('${t.id}',${t.activo})" style="background:none;border:1.5px solid var(--crema-oscura);border-radius:6px;padding:0.25rem 0.6rem;font-size:0.75rem;color:var(--tm);cursor:pointer;">${t.activo?'✓ Activo':'○ Inactivo'}</button>
+      <button onclick="eliminarTipoHora('${t.id}')" style="background:none;border:1.5px solid #f0c0bb;border-radius:6px;padding:0.25rem 0.6rem;font-size:0.75rem;color:#8b2d25;cursor:pointer;">Eliminar</button>
+    </div>`).join('');
+}
+
+async function addTipoHora(){
+  const valor=parseFloat(document.getElementById('g-th-valor').value);
+  const etiqueta=document.getElementById('g-th-etiqueta').value.trim();
+  if(!valor||!etiqueta)return;
+  const{data:ex}=await sb.from('tipos_horas').select('orden').eq('finca_id',currentFincaId).order('orden',{ascending:false}).limit(1);
+  const orden=ex&&ex.length?ex[0].orden+1:1;
+  await sb.from('tipos_horas').insert([{valor,etiqueta,orden,finca_id:currentFincaId}]);
+  document.getElementById('g-th-valor').value='';
+  document.getElementById('g-th-etiqueta').value='';
+  await cargarMaestros();
+  renderListaTiposHoras();
+}
+
+async function toggleTipoHora(id,activo){
+  await sb.from('tipos_horas').update({activo:!activo}).eq('id',id);
+  await cargarMaestros();renderListaTiposHoras();
+}
+
+async function eliminarTipoHora(id){
+  if(!confirm('¿Eliminar este tipo de hora?'))return;
+  await sb.from('tipos_horas').delete().eq('id',id);
+  await cargarMaestros();renderListaTiposHoras();
+}
+
 // ─── INIT ───
 window.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('r-fecha').value=new Date().toISOString().split('T')[0];
@@ -895,4 +971,3 @@ window.addEventListener('DOMContentLoaded',()=>{
 </script>
 </body>
 </html>
-
