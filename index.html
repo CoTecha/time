@@ -148,6 +148,7 @@
       <span class="brand-sub" id="topbar-finca"></span>
     </div>
     <div class="topbar-right">
+      <a href="https://cotecha.github.io/app" style="background:rgba(255,255,255,0.08);border:1px solid rgba(116,198,157,0.3);color:rgba(255,255,255,0.7);padding:0.25rem 0.65rem;border-radius:20px;font-size:0.75rem;text-decoration:none;font-family:'Inter',sans-serif;font-weight:500;white-space:nowrap;">⬅ Inicio</a>
       <span class="user-email" id="user-email"></span>
       <span class="rol-badge" id="rol-badge"></span>
       <button class="btn-logout" id="btn-logout">Salir</button>
@@ -493,15 +494,29 @@ async function doLogout(){if(sb)await sb.auth.signOut();location.reload();}
 async function showApp(){
   document.getElementById('app-shell').style.cssText='display:flex;flex-direction:column;min-height:100vh;';
   history.replaceState({page:'menu'},'','#menu');
-  const{data:fu}=await sb.from('finca_usuarios').select('finca_id,rol,expira_en,fincas(nombre,activa)').limit(1);
-  if(fu&&fu.length){
-    currentFincaId=fu[0].finca_id;currentRol=fu[0].rol;
-    document.getElementById('topbar-finca').textContent=fu[0].fincas.nombre;
-    const rb=document.getElementById('rol-badge');
-    rb.style.display='inline-block';rb.textContent=currentRol==='keyuser'?'KeyUser':'User';
-    rb.style.background=currentRol==='keyuser'?'rgba(0,180,216,0.2)':'rgba(116,198,157,0.2)';
-    rb.style.color=currentRol==='keyuser'?'#00b4d8':'#74c69d';
-    document.getElementById('card-gestion').style.display=currentRol==='keyuser'?'flex':'none';
+  const{data:fu}=await sb.from('finca_usuarios').select('finca_id,expira_en,fincas(nombre,activa)').limit(1);
+  if(!fu||!fu.length){document.getElementById('login-page').style.display='flex';document.getElementById('app-shell').style.display='none';return;}
+  currentFincaId=fu[0].finca_id;
+  document.getElementById('topbar-finca').textContent=fu[0].fincas.nombre;
+  // Check module access
+  const{data:ma}=await sb.from('modulo_accesos').select('rol,activo').eq('finca_id',currentFincaId).eq('modulo','time').limit(1);
+  if(!ma||!ma.length||!ma[0].activo){
+    document.getElementById('app-shell').style.display='none';
+    const bs=document.getElementById('blocked-screen');
+    if(bs){bs.style.display='flex';bs.querySelector&&bs.querySelector('.blocked-title')&&(bs.querySelector('.blocked-title').textContent='Sin acceso a este módulo');}
+    return;
+  }
+  currentRol=ma[0].rol;
+  const rb=document.getElementById('rol-badge');
+  rb.style.display='inline-block';rb.textContent=currentRol==='keyuser'?'KeyUser':'User';
+  rb.style.background=currentRol==='keyuser'?'rgba(0,180,216,0.2)':'rgba(116,198,157,0.2)';
+  rb.style.color=currentRol==='keyuser'?'#00b4d8':'#74c69d';
+  document.getElementById('card-gestion').style.display=currentRol==='keyuser'?'flex':'none';
+  // Check expiry
+  const expiraEn=fu[0].expira_en;
+  if(expiraEn){
+    const exp=new Date(expiraEn),now=new Date(),diffDays=Math.ceil((exp-now)/(1000*60*60*24));
+    if(diffDays<=0){document.getElementById('app-shell').style.display='none';return;}
   }
 }
 
